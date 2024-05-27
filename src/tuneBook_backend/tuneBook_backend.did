@@ -2,7 +2,6 @@ type Profile = record {
     "principal": text;
     "username": text;
     "avatar": blob;
-    "tune_book": vec Tune;
 };
 
 type Tune =record {
@@ -18,7 +17,7 @@ service : {
     "update_profile": (text, text, blob) -> (Profile);
     "get_original_tune_list": (nat64) -> (vec text) query;
     "get_original_tune": (text) -> (text) query;
+    "get_user_tune_list": (text, nat64) -> (vec text) query;
     "get_user_tune": (text, text) -> (text) query;
-    "add_tune_from_origin": (text, text) -> (vec Tune);
-    "add_tune": (text, text, text) -> (vec Tune);
+    "add_tune": (text, text, text) -> (bool);
 }

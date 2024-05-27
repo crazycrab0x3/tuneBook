@@ -4,8 +4,7 @@ use candid::{CandidType, Deserialize};
 pub struct Profile {
     pub principal: String,
     pub username: String,
-    pub avatar: Vec<u8>,
-    pub tune_book: Vec<Tune>
+    pub avatar: Vec<u8>
 }
 #[derive(CandidType, Clone, Deserialize, Debug)]
 pub struct Tune {
