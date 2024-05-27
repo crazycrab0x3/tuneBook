@@ -10,10 +10,12 @@ use crate::types;
 
 type ProfileStore = BTreeMap<String, types::Profile>;
 type TuneDB = BTreeMap<String, String>;
+type UserTuneStore = BTreeMap<String, Vec<types::Tune>>;
 
 thread_local! {
     pub static PROFILE_STORE: RefCell<ProfileStore> = RefCell::default();
     pub static TUNE_DB: RefCell<TuneDB> = RefCell::default();
+    pub static USER_TUNE_STORE: RefCell<UserTuneStore> = RefCell::default();
 }
 
 const Tune_DB: &str = include_str!("./tune_db.json");
@@ -52,13 +54,10 @@ pub fn authentication(principal: String) -> Option<types::Profile> {
 pub async fn update_profile(principal:String, username: String, avatar: Vec<u8>) -> types::Profile {
     PROFILE_STORE.with(|profile_store| {
         if profile_store.borrow().get(&principal).is_some(){
-            let user_profile = profile_store.borrow().get(&principal).unwrap().clone();
-            
             let new_profile = types::Profile{
                 principal: principal.clone(),
                 username,
-                avatar,
-                tune_book: user_profile.tune_book
+                avatar
             };
             profile_store.borrow_mut().insert(principal, new_profile.clone());
             new_profile
@@ -67,8 +66,7 @@ pub async fn update_profile(principal:String, username: String, avatar: Vec<u8>)
             let new_profile = types::Profile{
                 principal: principal.clone(),
                 username,
-                avatar,
-                tune_book: vec![]
+                avatar
             };
             profile_store.borrow_mut().insert(principal, new_profile.clone());
             new_profile            
@@ -80,10 +78,10 @@ pub fn get_original_tune_list(page_number: usize) -> Vec<String> {
     TUNE_DB.with(|tune_db| {
         let res: Vec<String> = tune_db.borrow()
         .iter()
-        .skip(page_number*50)
+        .skip(page_number*25)
         .enumerate()
         .filter_map(|(index, (title, _))| {
-            if index < 50 {
+            if index < 25 {
                 Some(title.clone())
             }
             else{
@@ -106,40 +104,59 @@ pub fn get_original_tune(title: String) -> String {
     })
 }
 
+pub fn get_user_tune_list(principal: String, page_number: usize) -> Vec<String> {
+    USER_TUNE_STORE.with(|user_tune_store| {
+        if user_tune_store.borrow().get(&principal).is_some() {
+            let user_tunes = user_tune_store.borrow().get(&principal).unwrap().clone();
+            let res = user_tunes.iter()
+            .skip(page_number*20)
+            .enumerate()
+            .filter_map(|(index, tune)| {
+                if index < 20 {
+                    Some(tune.title.clone())
+                }
+                else{
+                    None
+                }
+            })
+            .collect();
+            res
+        }
+        else{
+            vec![]
+        }
+    })
+}
+
 pub fn get_user_tune(principal: String, title: String) -> String {
-    PROFILE_STORE.with(|profile_store| {
-        let user_profile = profile_store.borrow().get(&principal).unwrap().clone();
-        let tune = user_profile.tune_book.iter().find(|tune| tune.title == title).unwrap();
+    USER_TUNE_STORE.with(|user_tune_store| {
+        let user_tunebook = user_tune_store.borrow().get(&principal).unwrap().clone();
+        let tune = user_tunebook.iter().find(|tune| tune.title == title).unwrap();
         tune.clone().tune_data.unwrap()
     })
 }
 
-pub async fn add_tune_from_origin(principal: String, title: String) -> Vec<types::Tune> {
-    PROFILE_STORE.with(|profile_store| {
-        let mut user_account = profile_store.borrow().get(&principal).unwrap().clone();
+pub async fn add_tune(principal: String, title: String, tune: String) -> bool {
+    USER_TUNE_STORE.with(|user_tune_store| {
+        let mut user_tunebook: Vec<types::Tune> = vec![];
+        if user_tune_store.borrow().get(&principal).is_some(){
+            user_tunebook = user_tune_store.borrow().get(&principal).unwrap().clone();
+            
+            let same_tunes: Vec<&types::Tune> = user_tunebook.iter()
+            .filter(|&tune| tune.clone().title == title)
+            .collect();
+
+            if same_tunes.len() > 0 {return false;} 
+
+        }
         let new_tune = types::Tune{
             origin: true,
-            title,
-            tune_data: None,
-            timestamp: ic_cdk::api::time().to_string()
-        };
-        user_account.tune_book.push(new_tune);
-        profile_store.borrow_mut().insert(principal, user_account.clone());
-        user_account.tune_book
-    })
-}
-
-pub async fn add_tune(principal: String, title: String, tune: String) -> Vec<types::Tune> {
-    PROFILE_STORE.with(|profile_store| {
-        let mut user_account = profile_store.borrow().get(&principal).unwrap().clone();
-        let new_tune = types::Tune{
-            origin: false,
             title,
             tune_data: Some(tune),
             timestamp: ic_cdk::api::time().to_string()
         };
-        user_account.tune_book.push(new_tune);
-        profile_store.borrow_mut().insert(principal, user_account.clone());
-        user_account.tune_book
+        user_tunebook.push(new_tune);
+        user_tune_store.borrow_mut().insert(principal, user_tunebook.clone());
+        true
     })
 }

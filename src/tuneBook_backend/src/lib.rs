@@ -30,16 +30,16 @@ fn get_original_tune(title: String) -> String {
 }
 
 #[ic_cdk::query]
+fn get_user_tune_list(principal: String, page_number: usize) -> Vec<String> {
+    utils::get_user_tune_list(principal, page_number)
+}
+
+#[ic_cdk::query]
 fn get_user_tune(principal: String, title: String) -> String {
     utils::get_user_tune(principal, title)
 }
 
 #[ic_cdk::update]
-async fn add_tune_from_origin(principal: String, title: String) -> Vec<types::Tune> {
-    utils::add_tune_from_origin(principal, title).await
-}
-
-#[ic_cdk::update]
-async fn add_tune(principal: String, title: String, tune: String) -> Vec<types::Tune> {
+async fn add_tune(principal: String, title: String, tune: String) -> bool {
     utils::add_tune(principal, title, tune).await
 }
