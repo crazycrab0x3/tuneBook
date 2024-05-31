@@ -9,6 +9,31 @@ type Tune =record {
     "title": text;
     "tune": opt text;
     "timestamp": text;
+};
+
+type OnSetDocContext = record {
+    "caller" : principal;
+    "data": DocContext;
+};
+
+type DocContext = record {
+    "collection": text;
+    "key": text;
+    "data": DocUpsert;
+};
+
+type DocUpsert = record {
+    "before": opt Doc;
+    "after": Doc;
+};
+
+type Doc = record {
+    "owner": principal;
+    "data": blob;
+    "description": opt text;
+    "created_at": nat64;
+    "updated_at": nat64;
+    "version": opt nat64;
 }
 
 service : {
